@@ -1,3 +1,4 @@
+"use client";
 import React from 'react'
 import {FormControl, FormDescription, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
 import {Input} from "@/components/ui/input";
@@ -8,27 +9,40 @@ interface FormFieldProps<T extends FieldValues> {
     name: Path<T>;
     label: string;
     placeholder?: string;
-    type?: 'text' | 'email' | 'password' | 'file'
+    type?: 'text' | 'email' | 'password' | 'file' | 'number'
 }
 
-const FormField = ({ control, name, label, placeholder, type ="text" }: FormFieldProps<T>) => (
+const FormField = <T extends FieldValues>({ control, name, label, placeholder, type ="text" }: FormFieldProps<T>) => (
     <Controller
         control={control}
         name={name}
-        render={({ field }) => (
-            <FormItem>
-                <FormLabel className="label">{label}</FormLabel>
-                <FormControl>
-                    <Input
-                        className="input"
-                        placeholder={placeholder}
-                        type={type}
-                        {...field}
-                    />
-                </FormControl>
-                <FormMessage />
-            </FormItem>
-        )}
+        render={({ field }) => {
+            const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                if (type === 'number') {
+                    const val = e.target.value;
+                    field.onChange(val === '' ? undefined : Number(val));
+                } else {
+                    field.onChange(e);
+                }
+            };
+
+            return (
+                <FormItem>
+                    <FormLabel className="label">{label}</FormLabel>
+                    <FormControl>
+                        <Input
+                            className="input"
+                            placeholder={placeholder}
+                            type={type}
+                            {...field}
+                            value={field.value ?? (type === 'number' ? '' : undefined)}
+                            onChange={handleChange}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )
+        }}
     />
 );
 

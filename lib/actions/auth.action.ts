@@ -130,3 +130,51 @@ export async function isAuthenticated() {
   const user = await getCurrentUser();
   return !!user;
 }
+
+export async function getInterviewByUserId(userId:string): Promise<interview[] | null> {
+  const interview = await db
+    .collection("interviews")
+    .where("userId", "==", userId)
+    .orderBy('createdAt', 'desc')
+    .get();
+
+    return interview.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as interview[];
+} 
+
+export async function getLatestInterviews(params: GetLatestInterviewsParams): Promise<Interview[] > {
+  const { userId, limit = 20 } = params;
+
+  // Build base query
+  let query: FirebaseFirestore.Query = db
+    .collection("interviews")
+    .where("finalized", "==", true);
+
+  // Only add the inequality filter if userId is provided
+  if (typeof userId !== "undefined" && userId !== null) {
+    // Firestore requires that queries with an inequality filter also include an orderBy on
+    // the same field. Add ordering by userId first, then by createdAt.
+    query = query.where("userId", "!=", userId).orderBy("userId", "asc").orderBy("createdAt", "desc");
+  } else {
+    query = query.orderBy("createdAt", "desc");
+  }
+
+  // Execute query
+  const snapshot = await query.limit(limit).get();
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Interview[];
+}
+
+export async function getInterviewById(id: string): Promise<Interview | null> {
+  const interview = await db
+    .collection("interviews")
+    .doc(id)
+    .get();
+
+    return interview.data() as Interview | null;
+}
