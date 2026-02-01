@@ -3,9 +3,11 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import { Button } from "@/components/ui/button";
 import FormField from "@/components/FormField";
 import { Form } from "@/components/ui/form";
+import { Loader2 } from "lucide-react";
 
 const interviewFormSchema = z.object({
     type: z.string().min(1, "Type is required"),
@@ -15,38 +17,45 @@ const interviewFormSchema = z.object({
     amount: z.number().min(1, "Amount of questions is required").max(20, "Maximum 20 questions allowed"),
 });
 
+type InterviewFormData = z.infer<typeof interviewFormSchema>;
+
 const InterviewForm = ({ userId }: { userId?: string }) => {
-    const methods = useForm({
+    const router = useRouter(); // Initialize the router
+    const [loading, setLoading] = React.useState(false);
+
+    const methods = useForm<InterviewFormData>({
         resolver: zodResolver(interviewFormSchema),
         defaultValues: {
             type: '',
             role: '',
             level: '',
             techstack: '',
-            amount: 1,
         },
     });
 
     const { control } = methods;
 
-    const onSubmit = async (data) => {
+    const onSubmit = async (data: InterviewFormData) => {
+        setLoading(true);
         try {
             const response = await fetch('/api/vapi/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ ...data, userid: userId }), // include userid
+                body: JSON.stringify({ ...data, userid: userId }),
             });
 
             const result = await response.json();
             if (result.success) {
-                // Handle success (e.g., show a success message or redirect)
+                router.push('/');
             } else {
-                // Handle error (e.g., show an error message)
+                console.error("Failed to generate interview:", result.error);
             }
         } catch (error) {
             console.error("Error submitting form:", error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -59,7 +68,10 @@ const InterviewForm = ({ userId }: { userId?: string }) => {
                 <FormField control={control} name="techstack" label="Tech Stack" placeholder="e.g., React, Node.js" />
                 <FormField control={control} name="amount" label="Number of Questions" placeholder="e.g., 5" type="number" />
 
-                <Button type="submit" className="btn-primary">Generate Interview</Button>
+                <Button type="submit" className="btn-primary" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {loading ? 'Generating...' : 'Generate Interview'}
+                </Button>
             </form>
         </Form>
     );

@@ -22,7 +22,7 @@ const FormField = <T extends FieldValues>({ control, name, label, placeholder, t
                     const val = e.target.value;
                     field.onChange(val === '' ? undefined : Number(val));
                 } else {
-                    field.onChange(e);
+                    field.onChange(e.target.value);
                 }
             };
 
@@ -35,8 +35,12 @@ const FormField = <T extends FieldValues>({ control, name, label, placeholder, t
                             placeholder={placeholder}
                             type={type}
                             {...field}
-                            value={field.value ?? (type === 'number' ? '' : undefined)}
+                            value={field.value ?? ''}
                             onChange={handleChange}
+                            min={type === 'number' ? 1 : undefined}
+                            max={type === 'number' ? 20 : undefined}
+                            inputMode={type === 'number' ? "numeric" : undefined}
+                            pattern={type === 'number' ? "[0-9]*" : undefined}
                         />
                     </FormControl>
                     <FormMessage />
