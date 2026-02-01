@@ -5,6 +5,8 @@ import {cn} from "@/lib/utils";
 import {useRouter} from "next/navigation";
 import {useEffect, useState} from "react";
 import { vapi } from '@/lib/vapi.sdk';
+import {interviewer} from "@/constants";
+import {createFeedback} from "@/lib/actions/auth.action";
 
 enum CallStatus {
     INACTIVE = 'INACTIVE',
@@ -18,7 +20,7 @@ interface SavedMessage {
     content: string;
 }
 
-const Agent = ({ userName, userId, type }: AgentProps) => {
+const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) => {
     const router = useRouter();
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
@@ -58,19 +60,61 @@ const Agent = ({ userName, userId, type }: AgentProps) => {
         }
     }, [])
 
+    const handleGenerateFeedback = async (messages: SavedMessage[]) => {
+        console.log('Generate feedback payload', { interviewId, userId, messagesLength: messages.length });
+
+        const result = await createFeedback({
+            interviewId: interviewId!,
+            userId: userId!,
+            transcript: messages,
+        });
+
+        console.log('createFeedback result', result);
+
+        if (result.success && result.feedbackId) {
+            router.push(`/interview/${interviewId}/feedback`);
+        } else {
+            // Surface the error instead of redirecting silently
+            console.error('Feedback generation failed', result.error);
+            // Option: show toast to user here
+        }
+    }
+
     useEffect(() => {
-        if(callStatus === CallStatus.FINISHED) router.push('/');
+        if(callStatus === CallStatus.FINISHED) {
+            if(type === 'generate') {
+                router.push('/')
+            } else {
+                handleGenerateFeedback(messages);
+            }
+        }
     }, [messages, callStatus, type, userId]);
 
     const handleCall = async () => {
         setCallStatus(CallStatus.CONNECTING);
 
-        await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
-            variableValues: {
-                username: userName,
-                userid: userId,
+        if(type ==='generate') {
+            await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
+                variableValues: {
+                    username: userName,
+                    userid: userId,
+                }
+            })
+        } else {
+            let formattedQuestions = '';
+
+            if(questions) {
+                formattedQuestions = questions
+                    .map((question) => `- ${question}`)
+                    .join('\n');
             }
-        })
+
+            await vapi.start(interviewer, {
+                variableValues: {
+                    questions: formattedQuestions
+                }
+            })
+        }
     }
 
     const handleDisconnect = async () => {
