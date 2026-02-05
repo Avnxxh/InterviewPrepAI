@@ -97,3 +97,21 @@ interface InterviewFormProps {
 interface TechIconProps {
   techStack: string[];
 }
+
+interface RankedUser {
+  userId: string;
+  userName: string;
+  score: number;
+  attemptDate: string;
+  feedbackId: string;
+}
+
+interface InterviewWithRanking {
+  interview: Interview;
+  rankedUsers: RankedUser[];
+}
+
+// Add this to GetFeedbackByInterviewIdParams
+interface GetAllFeedbackByInterviewIdParams {
+  interviewId: string;
+}

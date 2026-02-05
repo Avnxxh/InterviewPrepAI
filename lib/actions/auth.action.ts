@@ -299,3 +299,65 @@ Please return only the JSON object.
         return { success: false, error: e?.message ?? String(e) };
     }
 }
+
+export async function getAllFeedbackByInterviewId(params: GetAllFeedbackByInterviewIdParams): Promise<Array<Feedback & { userName: string; userId: string }> | null> {
+  const { interviewId } = params;
+  
+  try {
+    const feedbackSnapshot = await db
+      .collection('feedback')
+      .where('interviewId', '==', interviewId)
+      .orderBy('totalScore', 'desc')
+      .get();
+    
+    if (feedbackSnapshot.empty) return [];
+
+    const feedbackWithUsers = await Promise.all(
+      feedbackSnapshot.docs.map(async (doc) => {
+        const feedbackData = doc.data() as Feedback;
+        const userId = feedbackData.userId || '';
+        
+        // Fetch user details
+        const userDoc = await db.collection('users').doc(userId).get();
+        const userName = userDoc.exists ? (userDoc.data()?.name || 'Unknown User') : 'Unknown User';
+        
+        return {
+          id: doc.id,
+          ...feedbackData,
+          userName,
+          userId,
+        };
+      })
+    );
+
+    return feedbackWithUsers;
+  } catch (error) {
+    console.error('Error fetching all feedback for interview:', error);
+    return null;
+  }
+}
+
+export async function getInterviewWithRanking(interviewId: string): Promise<InterviewWithRanking | null> {
+  try {
+    const interview = await getInterviewById(interviewId);
+    if (!interview) return null;
+
+    const rankedFeedback = await getAllFeedbackByInterviewId({ interviewId });
+    
+    const rankedUsers: RankedUser[] = (rankedFeedback || []).map((feedback) => ({
+      userId: feedback.userId,
+      userName: feedback.userName,
+      score: feedback.totalScore,
+      attemptDate: feedback.createdAt,
+      feedbackId: feedback.id,
+    }));
+
+    return {
+      interview,
+      rankedUsers,
+    };
+  } catch (error) {
+    console.error('Error fetching interview with ranking:', error);
+    return null;
+  }
+}
