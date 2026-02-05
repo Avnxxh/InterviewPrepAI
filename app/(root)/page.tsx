@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import {dummyInterviews} from "@/constants";
 import InterviewCard from "@/components/InterviewCard";
-import { getCurrentUser, getInterviewByUserId, getLatestInterviews} from '@/lib/actions/auth.action';
+import { getCurrentUser, getInterviewByUserId, getLatestInterviews, getFeedbackByInterviewId } from '@/lib/actions/auth.action';
 
 const Page = async () => {
     const user = await getCurrentUser();
@@ -16,6 +16,16 @@ const Page = async () => {
     
     const hasPastInterviews = userInterviews && userInterviews.length > 0;
     const hasUpcomingInterviews = latestInterviews?.length > 0;
+
+    // Pre-fetch feedback for all user interviews
+    const interviewsWithFeedback = await Promise.all(
+        userInterviews?.map(async (interview) => {
+            const feedback = user?.id && interview.id
+                ? await getFeedbackByInterviewId({ interviewId: interview.id, userId: user.id })
+                : null;
+            return { ...interview, feedback };
+        }) || []
+    );
 
     return (
         <>
@@ -38,25 +48,27 @@ const Page = async () => {
                 <h2>Your Interviews</h2>
 
                 <div className="interviews-section">
-                    {
-                    hasPastInterviews ? (userInterviews?.map((interview) => (
-                        <InterviewCard {...interview} key={interview.id} />
-                    ))):(<p>You haven&apos;t taken any interviews yet</p>)}
-
-                    
+                    {hasPastInterviews ? (
+                        interviewsWithFeedback?.map((interview) => (
+                            <InterviewCard {...interview} key={interview.id} feedback={interview.feedback} />
+                        ))
+                    ) : (
+                        <p>No past interviews yet</p>
+                    )}
                 </div>
             </section>
 
             <section className="flex flex-col gap-6 mt-8">
-                <h2>Take an Interview</h2>
+                <h2>Available Interviews</h2>
 
                 <div className="interviews-section">
-                    {
-                    hasUpcomingInterviews ? (latestInterviews?.map((interview) => (
-                        <InterviewCard {...interview} key={interview.id} />
-                    ))):(<p>There are no new interviews available yet.</p>)}
-
-                    
+                    {hasUpcomingInterviews ? (
+                        latestInterviews?.map((interview) => (
+                            <InterviewCard {...interview} key={interview.id} feedback={null} />
+                        ))
+                    ) : (
+                        <p>No interviews available</p>
+                    )}
                 </div>
             </section>
         </>

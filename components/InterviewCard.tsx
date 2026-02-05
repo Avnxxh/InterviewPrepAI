@@ -1,17 +1,16 @@
+"use client";
+
 import dayjs from 'dayjs';
 import Image from "next/image";
 import { getRandomInterviewCover } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
-import { getFeedbackByInterviewId } from "@/lib/actions/auth.action";
 
-const InterviewCard = async ({ id, userId, role, type, techstack, createdAt }: InterviewCardProps) => {
-    const feedback = userId && id ?
-        await getFeedbackByInterviewId({ interviewId: id, userId })
-        : null;
+const InterviewCard = ({ id, userId, role, type, techstack, createdAt, feedback }: InterviewCardProps & { feedback: any }) => {
     const normalizedType = /mix/gi.test(type) ? 'Mixed' : type;
     const formattedDate = dayjs(feedback?.createdAt || createdAt || Date.now()).format('MMM D, YYYY');
+    const hasCompletedInterview = !!feedback;
 
     return (
         <div className="card-border w-[360px] max-sm:w-full min-h-96">
@@ -21,7 +20,7 @@ const InterviewCard = async ({ id, userId, role, type, techstack, createdAt }: I
                         <p className="badge-text">{normalizedType}</p>
                     </div>
 
-                    <Image src={getRandomInterviewCover()} alt="cover image" width={90} height={90} className="rounded-full object-fit size-[90px]" />
+                    <Image src={getRandomInterviewCover()} alt="cover image" width={90} height={90} className="rounded-full object-cover size-[90px]" />
 
                     <h3 className="mt-5 capitalize">
                         {role} Interview
@@ -47,12 +46,12 @@ const InterviewCard = async ({ id, userId, role, type, techstack, createdAt }: I
                 <div className="flex flex-row justify-between">
                     <DisplayTechIcons techStack={techstack} />
 
-                    <Button className="btn-primary">
-                        <Link href={feedback
+                    <Button className="btn-primary" asChild>
+                        <Link href={hasCompletedInterview
                             ? `/interview/${id}/feedback`
                             : `/interview/${id}/info`
                         }>
-                            {feedback ? 'Check Feedback' : 'View Details'}
+                            {hasCompletedInterview ? 'Check Feedback' : 'View Details'}
                         </Link>
                     </Button>
                 </div>
